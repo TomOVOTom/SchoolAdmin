@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>请假历史</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="leave-container">
+    <h2>请假历史记录</h2>
+    <table id="leaveTable">
+        <thead>
+        <tr>
+            <th>请假类型</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>请假地点</th>
+            <th>请假原因</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 数据将通过JavaScript动态加载 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    fetch('/leave/history/data')
+        .then(response => response.json())
+        .then(leaves => {
+            const tbody = document.querySelector('#leaveTable tbody');
+            tbody.innerHTML = leaves.map(leave => `
+            <tr>
+                <td>${leave.leaveType}</td>
+                <td>${new Date(leave.startTime).toLocaleString()}</td>
+                <td>${new Date(leave.endTime).toLocaleString()}</td>
+                <td>${leave.location}</td>
+                <td>${leave.reason}</td>
+                <td>${getStatusText(leave.status)}</td>
+                <td>
+                    ${leave.status === 'DRAFT' ? `
+                        <button onclick="editDraft('${leave.id}')">编辑</button>
+                        <button onclick="submitDraft('${leave.id}')">提交</button>
+                        <button onclick="deleteDraft('${leave.id}')">删除</button>
+                    ` : `
+                        <button onclick="viewDetails('${leave.id}')">查看详情</button>
+                    `}
+                </td>
+            </tr>
+        `).join('');
+        });
+
+    function getStatusText(status) {
+        const statusMap = {
+            'DRAFT': '草稿',
+            'PENDING': '待审批',
+            'APPROVED': '已批准',
+            'REJECTED': '已拒绝'
+        };
+        return statusMap[status] || status;
+    }
+
+    function editDraft(leaveId) {
+        window.location.href = `/leave/apply?draftId=${leaveId}`;
+    }
+
+    function submitDraft(leaveId) {
+        if (!confirm('确定要提交这份草稿吗？')) {
+            return;
+        }
+
+        fetch(`/leave/submit/${leaveId}`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('草稿提交成功！');
+                    location.reload();
+                } else {
+                    alert(data.message || '提交失败');
+                }
+            });
+    }
+
+    function deleteDraft(leaveId) {
+        if (!confirm('确定要删除这份草稿吗？')) {
+            return;
+        }
+
+        fetch(`/leave/draft/${leaveId}`, {
+            method: 'DELETE'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('草稿删除成功！');
+                    location.reload();
+                } else {
+                    alert(data.message || '删除失败');
+                }
+            });
+    }
+
+    function viewDetails(leaveId) {
+        // TODO: 实现查看详情功能
+    }
+
+
+</script>
+</body>
+</html>

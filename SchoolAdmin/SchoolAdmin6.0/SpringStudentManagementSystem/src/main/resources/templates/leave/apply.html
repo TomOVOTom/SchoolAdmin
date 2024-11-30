@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>请假申请</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="leave-container">
+    <h2>请假申请</h2>
+    <form id="leaveForm">
+        <div class="form-group">
+            <label>请假类型：</label>
+            <select name="leaveType" required>
+                <option value="事假">事假</option>
+                <option value="病假">病假</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>开始时间：</label>
+            <input type="datetime-local" name="startTime" required>
+        </div>
+
+        <div class="form-group">
+            <label>结束时间：</label>
+            <input type="datetime-local" name="endTime" required>
+        </div>
+
+        <div class="form-group">
+            <label>请假地点：</label>
+            <select name="location" required>
+                <option value="市区">市区</option>
+                <option value="非市区">非市区</option>
+                <option value="出省">出省</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>请假原因：</label>
+            <textarea name="reason" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>备注说明：</label>
+            <textarea name="remarks"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>上传附件：</label>
+            <input type="file" name="attachment">
+        </div>
+
+        <div class="button-group">
+            <button type="submit">提交申请</button>
+            <button type="button" onclick="saveAsDraft()">保存草稿</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('leaveForm').onsubmit = function (e) {
+        e.preventDefault();
+        //阻止表单的默认提交行为。
+        const formData = new FormData(this);
+
+        fetch('/leave/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(Object.fromEntries(formData))
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('请假申请提交成功！');
+                    window.location.href = '/leave/history';
+                } else {
+                    alert(data.message || '提交失败');
+                }
+            });
+    };
+
+    function saveAsDraft() {
+        const form = document.getElementById('leaveForm');
+        const formData = new FormData(form);
+
+        fetch('/leave/draft', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(Object.fromEntries(formData))
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('草稿保存成功！');
+                    window.location.href = '/leave/history';
+                } else {
+                    alert(data.message || '保存失败');
+                }
+            });
+    }
+
+</script>
+</body>
+</html>

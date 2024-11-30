@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>请假审批</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="leave-container">
+    <h2>待审批请假申请</h2>
+    <table id="approvalTable">
+        <thead>
+        <tr>
+            <th>学生姓名</th>
+            <th>请假类型</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>请假地点</th>
+            <th>请假原因</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 数据将通过JavaScript动态加载 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    fetch('/leave/pending')
+        .then(response => response.json())
+        .then(leaves => {
+            const tbody = document.querySelector('#approvalTable tbody');
+            tbody.innerHTML = leaves.map(leave => `
+            <tr>
+                <td>${leave.studentName}</td>
+                <td>${leave.leaveType}</td>
+                <td>${new Date(leave.startTime).toLocaleString()}</td>
+                <td>${new Date(leave.endTime).toLocaleString()}</td>
+                <td>${leave.location}</td>
+                <td>${leave.reason}</td>
+                <td>
+                    <button onclick="approve('${leave.id}')">批准</button>
+                    <button onclick="reject('${leave.id}')">拒绝</button>
+                    <button onclick="viewDetails('${leave.id}')">查看详情</button>
+                </td>
+            </tr>
+        `).join('');
+        });
+
+    function approve(leaveId) {
+        const comments = prompt('请输入审批意见：');
+        if (comments === null) return;
+
+        fetch(`/leave/approve/${leaveId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'APPROVED',
+                comments: comments
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('审批成功！');
+                    location.reload();
+                } else {
+                    alert(data.message || '审批失败');
+                }
+            });
+    }
+
+    function reject(leaveId) {
+        // 类似approve函数的实现
+    }
+
+    function viewDetails(leaveId) {
+        // TODO: 实现查看详情功能
+    }
+</script>
+</body>
+</html>
