@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>请假历史</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="leave-container">
+    <h2>请假历史记录</h2>
+    <div class="filter-group">
+        <label>状态筛选：</label>
+        <select id="statusFilter" onchange="filterRecords()">
+            <option value="ALL">全部</option>
+            <option value="DRAFT">草稿</option>
+            <option value="PENDING">待审批</option>
+            <option value="APPROVED">已批准</option>
+            <option value="REJECTED">已拒绝</option>
+        </select>
+    </div>
+    <table id="leaveTable">
+        <thead>
+        <tr>
+            <th>请假类型</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>请假地点</th>
+            <th>请假原因</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 数据将通过JavaScript动态加载 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let allLeaves = []; // 存储所有记录
+
+    fetch('/leave/history/data')
+        .then(response => response.json())
+        .then(leaves => {
+            allLeaves = leaves; // 保存所有记录
+            renderLeaves(leaves); // 渲染记录
+        });
+
+    function renderLeaves(leaves) {
+        const tbody = document.querySelector('#leaveTable tbody');
+        tbody.innerHTML = leaves.map(leave => `
+            <tr class="${leave.status.toLowerCase()}-row">
+                <td>${leave.leaveType}</td>
+                <td>${new Date(leave.startTime).toLocaleString()}</td>
+                <td>${new Date(leave.endTime).toLocaleString()}</td>
+                <td>${leave.location}</td>
+                <td>${leave.reason}</td>
+                <td>${getStatusText(leave.status)}</td>
+                <td>
+                    ${leave.status === 'DRAFT' ? `
+                        <button onclick="editDraft('${leave.id}')">编辑</button>
+                        <button onclick="submitDraft('${leave.id}')">提交</button>
+                        <button onclick="deleteDraft('${leave.id}')">删除</button>
+                    ` : `
+                        <button onclick="viewDetails('${leave.id}')">查看详情</button>
+                    `}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterRecords() {
+        const status = document.getElementById('statusFilter').value;
+        const filteredLeaves = status === 'ALL'
+            ? allLeaves
+            : allLeaves.filter(leave => leave.status === status);
+        console.log('当前状态:', status);
+        console.log('筛选后的记录:', filteredLeaves);
+        renderLeaves(filteredLeaves);
+    }
+
+    function getStatusText(status) {
+        const statusMap = {
+            'DRAFT': '草稿',
+            'PENDING': '待审批',
+            'APPROVED': '已批准',
+            'REJECTED': '已拒绝'
+        };
+        return statusMap[status] || status;
+    }
+
+    function editDraft(leaveId) {
+        window.location.href = `/leave/apply?draftId=${leaveId}`;
+    }
+
+    function submitDraft(leaveId) {
+        if (!confirm('确定要提交这份草稿吗？')) {
+            return;
+        }
+
+        fetch(`/leave/submit/${leaveId}`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('草稿提交成功！');
+                    location.reload();
+                } else {
+                    alert(data.message || '提交失败');
+                }
+            });
+    }
+
+    function deleteDraft(leaveId) {
+        if (!confirm('确定要删除这份草稿吗？')) {
+            return;
+        }
+
+        fetch(`/leave/draft/${leaveId}`, {
+            method: 'DELETE'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('草稿删除成功！');
+                    location.reload();
+                } else {
+                    alert(data.message || '删除失败');
+                }
+            });
+    }
+
+    fetch('/leave/history/data')
+        .then(response => response.json())
+        .then(leaves => {
+            console.log('获取到的所有记录:', leaves);
+            allLeaves = leaves;
+            renderLeaves(leaves);
+        });
+
+    function viewDetails(leaveId) {
+        // TODO: 实现查看详情功能
+    }
+
+
+</script>
+
+<style>
+    .filter-group {
+        margin-bottom: 20px;
+    }
+
+    .draft-row {
+        background-color: #fff3e0;
+    }
+
+    .pending-row {
+        background-color: #e3f2fd;
+    }
+
+    .approved-row {
+        background-color: #e8f5e9;
+    }
+
+    .rejected-row {
+        background-color: #ffebee;
+    }
+</style>
+</body>
+</html>

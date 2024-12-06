@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>请假审批</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="leave-container">
+    <h2>待审批请假申请</h2>
+    <table id="approvalTable">
+        <thead>
+        <tr>
+            <th>学生姓名</th>
+            <th>请假类型</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>请假地点</th>
+            <th>请假原因</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 数据将通过JavaScript动态加载 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // 页面加载时获取待审批的请假申请
+    function loadPendingLeaves() {
+        fetch('/leave/pending')
+            .then(response => response.json())
+            .then(leaves => {
+                const tbody = document.querySelector('#approvalTable tbody');
+                tbody.innerHTML = leaves.map(leave => `
+                    <tr>
+                        <td>${leave.studentName || '未知'}</td>
+                        <td>${leave.leaveType}</td>
+                        <td>${new Date(leave.startTime).toLocaleString()}</td>
+                        <td>${new Date(leave.endTime).toLocaleString()}</td>
+                        <td>${leave.location}</td>
+                        <td>${leave.reason}</td>
+                        <td>
+                            <button onclick="approve('${leave.id}')">批准</button>
+                            <button onclick="reject('${leave.id}')">拒绝</button>
+                            <button onclick="viewDetails('${leave.id}')">查看详情</button>
+                        </td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('获取待审批请假失败:', error);
+                alert('获取待审批请假失败');
+            });
+    }
+
+    // 批准请假申请
+    function approve(leaveId) {
+        const comments = prompt('请输入审批意见：');
+        if (comments === null) return;
+
+        fetch(`/leave/approve/${leaveId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'APPROVED',
+                comments: comments
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('审批成功！');
+                    loadPendingLeaves(); // 重新加载待审批列表
+                } else {
+                    alert(data.message || '审批失败');
+                }
+            });
+    }
+
+    // 拒绝请假申请
+    function reject(leaveId) {
+        const comments = prompt('请输入拒绝原因：');
+        if (comments === null) return;
+
+        fetch(`/leave/approve/${leaveId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: 'REJECTED',
+                comments: comments
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('已拒绝该请假申请！');
+                    loadPendingLeaves(); // 重新加载待审批列表
+                } else {
+                    alert(data.message || '操作失败');
+                }
+            });
+    }
+
+    function viewDetails(leaveId) {
+        // 创建模态框
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+        document.body.appendChild(modal);
+
+        // 获取请假详情和审批记录
+        Promise.all([
+            fetch(`/leave/${leaveId}`).then(res => res.json()),
+            fetch(`/leave/approvals/${leaveId}`).then(res => res.json())
+        ]).then(([leave, approvals]) => {
+            const studentName = leave.studentName || '未知';
+            modal.innerHTML = `
+            <h3>请假详情</h3>
+            <p>学生姓名：${studentName}</p>
+            <p>请假类型：${leave.leaveType}</p>
+            <p>开始时间：${new Date(leave.startTime).toLocaleString()}</p>
+            <p>结束时间：${new Date(leave.endTime).toLocaleString()}</p>
+            <p>请假地点：${leave.location}</p>
+            <p>请假原因：${leave.reason}</p>
+            <p>备注说明：${leave.remarks || '无'}</p>
+            <p>当前状态：${leave.status}</p>
+
+            <h3>审批记录</h3>
+            ${approvals.length ? `
+                <table class="modal-table">
+                    <tr>
+                        <th>审批人角色</th>
+                        <th>审批意见</th>
+                        <th>审批时间</th>
+                        <th>审批结果</th>
+                    </tr>
+                    ${approvals.map(approval => `
+                        <tr>
+                            <td>${approval.approverRole}</td>
+                            <td>${approval.comments || '无'}</td>
+                            <td>${new Date(approval.approvalTime).toLocaleString()}</td>
+                            <td>${approval.status}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            ` : '<p>暂无审批记录</p>'}
+
+            <button class="close-button" onclick="closeModal(this)">关闭</button>
+        `;
+
+            // 设置透明度为1，触发淡入动画
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                overlay.style.opacity = '1';
+            }, 50);
+        });
+    }
+
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', loadPendingLeaves);
+
+    function closeModal(button) {
+        const modal = button.closest('div');
+        if (modal) {
+            modal.remove();
+        }
+    }
+</script>
+</body>
+</html>

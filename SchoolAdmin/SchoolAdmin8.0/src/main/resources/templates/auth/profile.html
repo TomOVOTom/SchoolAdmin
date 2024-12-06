@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>个人主页</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="profile-container">
+    <h2>个人主页</h2>
+    <div class="user-info">
+        <p><strong>用户名：</strong> <span th:text="${user.username}"></span></p>
+        <p><strong>邮箱：</strong> <span th:text="${user.email}"></span></p>
+        <p><strong>角色：</strong> <span th:text="${user.role}"></span></p>
+        <p><strong>最后登录时间：</strong> <span th:text="${user.lastLoginTime}"></span></p>
+    </div>
+
+    <div class="actions">
+        <button onclick="showChangePasswordForm()">修改密码</button>
+        <button onclick="logout()">退出登录</button>
+        <button onclick="disableAccount()" class="danger">注销账号</button>
+    </div>
+
+    <div id="changePasswordForm" style="display: none;">
+        <h3>修改密码</h3>
+        <form onsubmit="return changePassword(event)">
+            <div class="form-group">
+                <label for="oldPassword">原密码：</label>
+                <input type="password" id="oldPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">新密码：</label>
+                <input type="password" id="newPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">确认新密码：</label>
+                <input type="password" id="confirmPassword" required>
+            </div>
+            <button type="submit">确认修改</button>
+            <button type="button" onclick="hideChangePasswordForm()">取消</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function showChangePasswordForm() {
+        document.getElementById('changePasswordForm').style.display = 'block';
+    }
+
+    function hideChangePasswordForm() {
+        document.getElementById('changePasswordForm').style.display = 'none';
+    }
+
+    function changePassword(event) {
+        event.preventDefault();
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            alert('两次输入的新密码不一致！');
+            return;
+        }
+
+        fetch('/auth/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `oldPassword=${oldPassword}&newPassword=${newPassword}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('密码修改成功，请重新登录！');
+                    window.location.href = '/auth/login';
+                } else {
+                    alert(data.message);
+                }
+            });
+    }
+
+    function logout() {
+        fetch('/auth/logout', {
+            method: 'POST'
+        })
+            .then(() => {
+                window.location.href = '/auth/login';
+            });
+    }
+
+    function disableAccount() {
+        if (confirm('确定要注销账号吗？此操作不可恢复！')) {
+            fetch('/auth/disable', {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        window.location.href = '/auth/login';
+                    } else {
+                        alert(data.message || '注销失败');
+                    }
+                })
+                .catch(error => {
+                    alert('注销请求失败，请稍后重试');
+                });
+        }
+    }
+</script>
+</body>
+</html>

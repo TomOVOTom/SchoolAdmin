@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>用户登录</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="login-container">
+    <h2>用户登录</h2>
+    <div id="loginStatus"></div>
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="username">用户名：</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">密码：</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <button type="submit">登录</button>
+            <a href="/auth/register" class="register-link">注册新用户</a>
+            <a href="/auth/forgot-password" class="forgot-password-link">忘记密码？</a>
+        </div>
+    </form>
+    
+</div>
+<script>
+    // 显示登录状态
+    function checkLoginStatus() {
+        fetch('/auth/status')
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('loginStatus');
+                if (data.isLoggedIn) {
+                    statusDiv.innerHTML = `当前状态：已登录 (${data.username})`;
+                    if (data.lastLoginTime) {
+                        document.getElementById('lastLoginTime').textContent =
+                            `上次登录时间：${new Date(data.lastLoginTime).toLocaleString()}`;
+                    }
+                } else {
+                    statusDiv.innerHTML = '当前状态：未登录';
+                }
+            });
+    }
+
+    // 页面加载时检查登录状态
+    checkLoginStatus();
+
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        fetch('/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `username=${document.getElementById('username').value}&password=${document.getElementById('password').value}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.message) {
+                        alert(data.message);
+                    }
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.message || '登录失败');
+                }
+            })
+            .catch(error => {
+                alert('登录请求失败，请稍后重试');
+            });
+    });
+</script>
+</body>
+</html>
